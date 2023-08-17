@@ -9,18 +9,20 @@ const XLXS = require('xlsx');
  */
 async function jd() {
     const browser = await puppeteer.launch({
-        headless: false
+        headless: true,
+        // 执行间隔
+        slowMo: 100,
     });
     const page = await browser.newPage();
 
     // 测试页面：https://search.jd.com/Search?keyword=only&enc=utf-8&wq=only&pvid=d691634b78874896a809b6ca7d4dd211
-    await page.goto('https://search.jd.com/Search?keyword=泥塑&enc=utf-8&wq=泥塑&pvid=d691634b78874896a809b6ca7d4dd211');
+    await page.goto('https://search.jd.com/Search?keyword=%E6%B3%A5%E5%A1%91%E6%91%86%E4%BB%B6%20%E6%B3%A5%E5%A1%91%E7%A4%BC%E5%93%81&enc=utf-8&wq=%E6%B3%A5%E5%A1%91%E6%91%86%E4%BB%B6%20%E6%B3%A5%E5%A1%91li%27pin&pvid=b7e5d636b67340e4ae5f98ac770037fb');
 
     // 等待页面加载完成
     await page.waitForSelector('.gl-warp');
 
-    // 按销量排序
-    await page.click('.f-sort a:nth-child(2)');
+    // 按评价数量排序
+    await page.click('.f-sort a:nth-child(3)');
     // 等待页面加载完成
     await page.waitForSelector('.gl-warp');
 
@@ -30,7 +32,7 @@ async function jd() {
         return totalPage;
     });
     // 目前爬取前三页
-    totalPage = 1;
+    totalPage = 2;
 
     // 全部商品数据
     const allData = [];
@@ -90,22 +92,6 @@ async function jd() {
             const page = await browser.newPage();
             await page.goto(item.url);
             await page.waitForSelector('.sku-name');
-            // const detail = await page.evaluate(() => {
-            //     // 商品介绍
-            //     const desc = document.querySelector('#detail .tab-con').innerText;
-
-            //     // 切换到规格与包装
-            //     document.querySelector('#detail .tab-main li:nth-child(2)').click();
-
-            //     // 规格与包装
-            //     const spec = document.querySelector('#detail .tab-con .Ptable').innerText;
-
-            //     return {
-            //         desc,
-            //         spec,
-            //     };
-            // });
-
             const detail = {};
             // 商品介绍
             let descNode = await page.$$('#detail .tab-con');
@@ -136,16 +122,18 @@ async function jd() {
             const origin = detail.desc.match(/商品产地：([^\n]*)\n/);
             // 国产/进口：国产
             const market = detail.desc.match(/国产\/进口：([^\n]*)\n/);
-            // 净含量：501g-1kg
-            const netWeight = detail.desc.match(/净含量：([^\n]*)\n/);
-            // 包装形式：箱装
-            const packageType = detail.desc.match(/包装形式：([^\n]*)\n/);
-            // 口味：混合口味
-            const taste = detail.desc.match(/口味：([^\n]*)\n/);
-            // 净含量：400g
-            const netWeight2 = detail.spec.match(/净含量([^\n]*)\n/);
-            // 保质期：180天
-            const shelfLife = detail.spec.match(/保质期([^\n]*)\n/);
+            // 材质
+            const material = detail.desc.match(/材质：([^\n]*)\n/);
+            // 作品来源
+            const source = detail.desc.match(/作品来源：([^\n]*)\n/);
+            // 适用年龄
+            const age = detail.desc.match(/适用年龄：([^\n]*)\n/);
+            // 送礼对象
+            const gift = detail.desc.match(/送礼对象：([^\n]*)\n/);
+            // 适用场景
+            const scene = detail.desc.match(/适用场景：([^\n]*)\n/);
+            // 寓意
+            const meaning = detail.desc.match(/寓意：([^\n]*)\n/);
 
             // 品牌
             detail.brand = brand ? brand[1].trim() : '';
@@ -159,16 +147,18 @@ async function jd() {
             detail.origin = origin ? origin[1].trim() : '';
             // 国产/进口：国产;
             detail.market = market ? market[1].trim() : '';
-            // 净含量：501g-1kg;
-            detail.netWeight = netWeight ? netWeight[1].trim() : '';
-            // 包装形式：箱装;
-            detail.packageType = packageType ? packageType[1].trim() : '';
-            // 口味：混合口味;
-            detail.taste = taste ? taste[1].trim() : '';
-            // 净含量：400g;
-            detail.netWeight2 = netWeight2 ? netWeight2[1].trim() : '';
-            // 保质期：180天;
-            detail.shelfLife = shelfLife ? shelfLife[1].trim() : '';
+            // 材质
+            detail.material = material ? material[1].trim() : '';
+            // 作品来源
+            detail.source = source ? source[1].trim() : '';
+            // 适用年龄
+            detail.age = age ? age[1].trim() : '';
+            // 送礼对象
+            detail.gift = gift ? gift[1].trim() : '';
+            // 适用场景
+            detail.scene = scene ? scene[1].trim() : '';
+            // 寓意
+            detail.meaning = meaning ? meaning[1].trim() : '';
 
             item.detail = detail;
 
@@ -176,11 +166,6 @@ async function jd() {
             allData.push(item);
             console.log('已完成：', i + 1, item.title);
             await page.close();
-
-            // TODO 仅爬取前10条数据
-            if (i === 9) {
-                break;
-            }
         }
         console.log('完成第' + pageNum + '页数据采集, data.length=' + data.length);
         // 下一页
@@ -202,6 +187,8 @@ async function taobao() {
     const browser = await puppeteer.launch({
         headless: false,
         // executablePath: 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+        // 设置打开页面的视图大小
+        args: ['--window-size=1800,1100']
     });
     const page = await browser.newPage();
     // 登录页面
@@ -368,7 +355,7 @@ async function exportJDData(allData) {
     let workbook = XLXS.utils.book_new();
     // 写入工作表
     let ws_data = [];
-    ws_data.push(['序号', '品牌', '店铺', '标题', '商品编号', '商品名称', '价格', '净含量', '总评价数', '商品毛重', '净含量(区间)', '保质期', '包装', '口味', '商品链接']);
+    ws_data.push(['序号', '品牌', '店铺', '标题', '商品编号', '商品名称', '价格', '总评价数', '商品毛重', '材质', '作品来源', '适用年龄', '送礼对象', '适用场景', '寓意', '商品链接']);
     allData.forEach((item, index) => {
         ws_data.push([
             index + 1,
@@ -378,13 +365,21 @@ async function exportJDData(allData) {
             item.detail.id,
             item.detail.name,
             item.price,
-            item.detail.netWeight2,
             item.commentTotal,
             item.detail.weight,
-            item.detail.netWeight,
-            item.detail.shelfLife,
-            item.detail.packageType,
-            item.detail.taste,
+            // 材质
+            item.detail.material,
+            // 作品来源
+            item.detail.source,
+            // 适用年龄
+            item.detail.age,
+            // 送礼对象
+            item.detail.gift,
+            // 适用场景
+            item.detail.scene,
+            // 寓意
+            item.detail.meaning,
+            // 商品链接
             item.url
         ]);
     });
