@@ -9,12 +9,12 @@ const XLXS = require('xlsx');
  */
 async function jd() {
     const browser = await puppeteer.launch({
-        headless: true
+        headless: false
     });
     const page = await browser.newPage();
 
     // 测试页面：https://search.jd.com/Search?keyword=only&enc=utf-8&wq=only&pvid=d691634b78874896a809b6ca7d4dd211
-    await page.goto('https://search.jd.com/Search?keyword=麻花&enc=utf-8&wq=麻花&pvid=d691634b78874896a809b6ca7d4dd211');
+    await page.goto('https://search.jd.com/Search?keyword=泥塑&enc=utf-8&wq=泥塑&pvid=d691634b78874896a809b6ca7d4dd211');
 
     // 等待页面加载完成
     await page.waitForSelector('.gl-warp');
@@ -30,7 +30,7 @@ async function jd() {
         return totalPage;
     });
     // 目前爬取前三页
-    totalPage = 3;
+    totalPage = 1;
 
     // 全部商品数据
     const allData = [];
@@ -90,21 +90,39 @@ async function jd() {
             const page = await browser.newPage();
             await page.goto(item.url);
             await page.waitForSelector('.sku-name');
-            const detail = await page.evaluate(() => {
-                // 商品介绍
-                const desc = document.querySelector('#detail .tab-con').innerText;
+            // const detail = await page.evaluate(() => {
+            //     // 商品介绍
+            //     const desc = document.querySelector('#detail .tab-con').innerText;
 
-                // 切换到规格与包装
-                document.querySelector('#detail .tab-main li:nth-child(2)').click();
+            //     // 切换到规格与包装
+            //     document.querySelector('#detail .tab-main li:nth-child(2)').click();
 
-                // 规格与包装
-                const spec = document.querySelector('#detail .tab-con .Ptable').innerText;
+            //     // 规格与包装
+            //     const spec = document.querySelector('#detail .tab-con .Ptable').innerText;
 
-                return {
-                    desc,
-                    spec,
-                };
-            });
+            //     return {
+            //         desc,
+            //         spec,
+            //     };
+            // });
+
+            const detail = {};
+            // 商品介绍
+            let descNode = await page.$$('#detail .tab-con');
+            if (descNode.length > 0) {
+                detail.desc = await descNode[0].$eval('div', node => node.innerText);
+            } else {
+                detail.desc = '';
+            }
+            // 切换到规格与包装
+            // await page.click('#detail .tab-main li:nth-child(2)');
+            // 规格与包装
+            // detail.spec = await page.$$('#detail .tab-con .Ptable').innerText;
+            // let specNode = await page.$$('#detail .tab-con .Ptable');
+            // if (specNode.length > 0) {
+            //     detail.spec = await specNode[0].$eval('div', node => node.innerText);
+            // }
+            detail.spec = '';
 
             // 品牌
             const brand = detail.desc.match(/品牌：([^\n]*)\n/);
@@ -158,6 +176,11 @@ async function jd() {
             allData.push(item);
             console.log('已完成：', i + 1, item.title);
             await page.close();
+
+            // TODO 仅爬取前10条数据
+            if (i === 9) {
+                break;
+            }
         }
         console.log('完成第' + pageNum + '页数据采集, data.length=' + data.length);
         // 下一页
@@ -178,7 +201,7 @@ async function jd() {
 async function taobao() {
     const browser = await puppeteer.launch({
         headless: false,
-        executablePath: 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+        // executablePath: 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
     });
     const page = await browser.newPage();
     // 登录页面
@@ -376,6 +399,6 @@ async function exportJDData(allData) {
 }
 
 (async () => {
-    // await jd();
-    await taobao();
+    await jd();
+    // await taobao();
 })();
